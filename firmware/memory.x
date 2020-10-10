@@ -1,6 +1,6 @@
-/* Linker script for the STM32F103C8T6 */
 MEMORY
 {
-  FLASH : ORIGIN = 0x08000000, LENGTH = 128K
-  RAM : ORIGIN = 0x20000000, LENGTH = 16K
+  FLASH (rx) : ORIGIN = 0x00000000 + 8K, LENGTH = 128K - 8K /* First 8KB used by bootloader */
+  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 16K
 }
+_stack_start = ORIGIN(RAM) + LENGTH(RAM);
