@@ -23,7 +23,7 @@ use atsamd_hal::{
 };
 use core::convert::Infallible;
 use embedded_hal::digital::v2::{InputPin, OutputPin};
-use embedded_hal::prelude::*;
+
 use generic_array::typenum::{U4, U6};
 use keyberon::{
     action::{k, l, m, Action, Action::*},
