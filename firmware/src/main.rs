@@ -14,11 +14,9 @@ use atsamd_hal::{
     target_device::{
         self,
         gclk::{clkctrl::GEN_A, genctrl::SRC_A},
-        interrupt, CorePeripherals, Peripherals, TC3,
+        TC3,
     },
-    time::Miliseconds,
     timer::TimerCounter,
-    usb,
     usb::UsbBus,
 };
 use core::convert::Infallible;
@@ -88,13 +86,13 @@ define_pins!(
 );
 
 pub struct Cols(
-    atsamd_hal::gpio::Pa14<atsamd_hal::gpio::Input<atsamd_hal::gpio::PullUp>>,
-    atsamd_hal::gpio::Pa9<atsamd_hal::gpio::Input<atsamd_hal::gpio::PullUp>>,
-    atsamd_hal::gpio::Pa8<atsamd_hal::gpio::Input<atsamd_hal::gpio::PullUp>>,
-    atsamd_hal::gpio::Pa5<atsamd_hal::gpio::Input<atsamd_hal::gpio::PullUp>>,
-    atsamd_hal::gpio::Pa6<atsamd_hal::gpio::Input<atsamd_hal::gpio::PullUp>>,
-    atsamd_hal::gpio::Pa16<atsamd_hal::gpio::Input<atsamd_hal::gpio::PullUp>>,
-    atsamd_hal::gpio::Pa17<atsamd_hal::gpio::Input<atsamd_hal::gpio::PullUp>>,
+    atsamd_hal::gpio::Pa14<Input<PullUp>>,
+    atsamd_hal::gpio::Pa9<Input<PullUp>>,
+    atsamd_hal::gpio::Pa8<Input<PullUp>>,
+    atsamd_hal::gpio::Pa5<Input<PullUp>>,
+    atsamd_hal::gpio::Pa6<Input<PullUp>>,
+    atsamd_hal::gpio::Pa16<Input<PullUp>>,
+    atsamd_hal::gpio::Pa17<Input<PullUp>>,
 );
 impl_heterogenous_array! {
     Cols,
@@ -104,10 +102,10 @@ impl_heterogenous_array! {
 }
 
 pub struct Rows(
-    atsamd_hal::gpio::Pa19<atsamd_hal::gpio::Output<atsamd_hal::gpio::PushPull>>,
-    atsamd_hal::gpio::Pa18<atsamd_hal::gpio::Output<atsamd_hal::gpio::PushPull>>,
-    atsamd_hal::gpio::Pa7<atsamd_hal::gpio::Output<atsamd_hal::gpio::PushPull>>,
-    atsamd_hal::gpio::Pa15<atsamd_hal::gpio::Output<atsamd_hal::gpio::PushPull>>,
+    atsamd_hal::gpio::Pa19<Output<PushPull>>,
+    atsamd_hal::gpio::Pa18<Output<PushPull>>,
+    atsamd_hal::gpio::Pa7<Output<PushPull>>,
+    atsamd_hal::gpio::Pa15<Output<PushPull>>,
 );
 impl_heterogenous_array! {
     Rows,
@@ -351,7 +349,7 @@ const APP: () = {
             .map(c.resources.transform)
         {
             for &b in &ser(event) {
-                block!(c
+                let _ = block!(c
                     .resources
                     .uart
                     .write(b)
