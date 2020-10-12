@@ -249,17 +249,23 @@ const APP: () = {
         timer.start(1.ms());
         timer.enable_interrupt();
 
-        let is_left = port.pa23.into_pull_up_input(&mut port.port).is_low().unwrap();
+        let is_left = port
+            .pa23
+            .into_pull_up_input(&mut port.port)
+            .is_low()
+            .unwrap();
         let transform: fn(Event) -> Event = if is_left {
             |e| e
         } else {
             |e| e.transform(|i, j| (i, 11 - j))
         };
 
-        let rx_pin: Sercom0Pad3<_> = port.pa11
+        let rx_pin: Sercom0Pad3<_> = port
+            .pa11
             .into_pull_down_input(&mut port.port)
             .into_pad(&mut port.port);
-        let tx_pin: Sercom0Pad2<_> = port.pa10
+        let tx_pin: Sercom0Pad2<_> = port
+            .pa10
             .into_push_pull_output(&mut port.port)
             .into_pad(&mut port.port);
 
@@ -345,7 +351,11 @@ const APP: () = {
             .map(c.resources.transform)
         {
             for &b in &ser(event) {
-                block!(c.resources.uart.write(b).map_err(|_| nb::Error::<()>::WouldBlock));
+                block!(c
+                    .resources
+                    .uart
+                    .write(b)
+                    .map_err(|_| nb::Error::<()>::WouldBlock));
             }
             c.spawn.handle_event(Some(event)).unwrap();
         }
