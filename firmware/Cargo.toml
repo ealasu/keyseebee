@@ -21,7 +21,22 @@ nb = "1.0.0"
 lto = true
 incremental = false
 opt-level = "z"
-debug = false
+debug = true
+
+[profile.dev]
+#lto = true
+#incremental = false
+#opt-level = "z"
+#debug = true
+
+# don't optimize the `cortex-m-rt` crate
+[profile.dev.package.cortex-m-rt] # +
+opt-level = 0 # +
+
+# but do optimize all the other dependencies
+[profile.dev.package."*"]
+codegen-units = 1 # better optimizations
+opt-level = "z"
 
 [features]
 # ask the HAL to enable atsamd21e18a support

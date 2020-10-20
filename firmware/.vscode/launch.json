@@ -5,10 +5,28 @@
             "type": "gdb",
             "request": "launch",
             "cwd": "${workspaceRoot}",
-            "target": "${workspaceRoot}/target/thumbv6m-none-eabihf/debug/keyseebee",
+            "target": "${workspaceRoot}/target/thumbv6m-none-eabi/release/keyseebee",
             "gdbpath": "arm-none-eabi-gdb",
             "autorun": [
                 "source -v debug.gdb",
+            ]
+        },
+        {
+            "name": "ARM debug",
+            "type": "cortex-debug",
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceRoot}/target/thumbv6m-none-eabi/debug/keyseebee",
+            "request": "launch",
+            "servertype": "jlink",
+            "interface": "swd",
+            "device": "ATSAMD21E17",
+            "runToMain": true,
+            "preRestartCommands": [
+                "file /extra/repos/oss/uf2-samdx1/build/tau/bootloader-tau-v3.10.0-5-g9d601f4.elf",
+                "load",
+                "add-symbol-file ${workspaceRoot}/target/thumbv6m-none-eabi/debug/keyseebee 0x00002000",
+                "enable breakpoint",
+                "monitor reset"
             ]
         }
     ]
