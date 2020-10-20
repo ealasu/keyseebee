@@ -1,17 +1,6 @@
 {
     "configurations": [
         {
-            "name": "Remote debug",
-            "type": "gdb",
-            "request": "launch",
-            "cwd": "${workspaceRoot}",
-            "target": "${workspaceRoot}/target/thumbv6m-none-eabi/release/keyseebee",
-            "gdbpath": "arm-none-eabi-gdb",
-            "autorun": [
-                "source -v debug.gdb",
-            ]
-        },
-        {
             "name": "ARM debug",
             "type": "cortex-debug",
             "cwd": "${workspaceRoot}",

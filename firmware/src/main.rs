@@ -173,7 +173,6 @@ const APP: () = {
         debouncer: Debouncer<PressedKeys<U4, U6>>,
         layout: Layout,
         timer: TimerCounter<TC3>,
-        transform: fn(Event) -> Event,
         // tx: serial::Tx<hal::pac::USART1>,
         // rx: serial::Rx<hal::pac::USART1>,
         uart: UART0<Sercom0Pad3<Pa11<PfC>>, Sercom0Pad2<Pa10<PfC>>, (), ()>,
@@ -247,17 +246,6 @@ const APP: () = {
         timer.start(1.ms());
         timer.enable_interrupt();
 
-        let is_left = port
-            .pa23
-            .into_pull_up_input(&mut port.port)
-            .is_low()
-            .unwrap();
-        let transform: fn(Event) -> Event = if is_left {
-            |e| e
-        } else {
-            |e| e.transform(|i, j| (i, 11 - j))
-        };
-
         let rx_pin: Sercom0Pad3<_> = port
             .pa11
             .into_pull_down_input(&mut port.port)
@@ -285,7 +273,6 @@ const APP: () = {
             debouncer: Debouncer::new(PressedKeys::default(), PressedKeys::default(), 5),
             matrix,
             layout: Layout::new(LAYERS),
-            transform,
             uart,
         }
     }
@@ -301,6 +288,7 @@ const APP: () = {
 
             if BUF[3] == b'\n' {
                 if let Ok(event) = de(&BUF[..]) {
+                    let event = event.transform(|i, j| (i, 11 - j));
                     c.spawn.handle_event(Some(event)).unwrap();
                 }
             }
@@ -337,7 +325,7 @@ const APP: () = {
         binds = TC3,
         priority = 2,
         spawn = [handle_event],
-        resources = [matrix, debouncer, timer, uart, &transform],
+        resources = [matrix, debouncer, timer, uart],
     )]
     fn tick(c: tick::Context) {
         c.resources.timer.wait().ok();
@@ -346,7 +334,6 @@ const APP: () = {
             .resources
             .debouncer
             .events(c.resources.matrix.get().unwrap())
-            .map(c.resources.transform)
         {
             for &b in &ser(event) {
                 let _ = block!(c
