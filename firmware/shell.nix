@@ -26,6 +26,8 @@ pkgs.mkShell {
 
 
 
+    # Run this first: nix-store --add-fixed sha256 ~/Downloads/JLink_Linux_V686e_x86_64.tgz
+
 (callPackage ({ stdenv, requireFile, autoPatchelfHook, substituteAll,
   qt4, fontconfig, freetype, libusb, libICE, libSM, ncurses5, udev,
   libX11, libXext, libXcursor, libXfixes, libXrender, libXrandr }:
