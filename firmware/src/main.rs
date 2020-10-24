@@ -1,8 +1,8 @@
 #![no_main]
 #![no_std]
 
-mod crc8;
 mod codec;
+mod crc8;
 
 // set the panic handler
 use panic_halt as _;
@@ -11,7 +11,10 @@ pub use atsamd_hal as hal;
 use atsamd_hal::{
     clock::GenericClockController,
     define_pins,
-    gpio::{self, Floating, Input, IntoFunction, Output, Pa10, Pa11, Pa27, PfC, Port, PullUp, PushPull, OpenDrain},
+    gpio::{
+        self, Floating, Input, IntoFunction, OpenDrain, Output, Pa10, Pa11, Pa27, PfC, Port,
+        PullUp, PushPull,
+    },
     prelude::*,
     sercom::{PadPin, Sercom0Pad2, Sercom0Pad3, UART0},
     target_device::{
@@ -292,9 +295,9 @@ const APP: () = {
                 let scan = codec::decode_scan(&BUF);
 
                 //if let Ok(event) = de(&BUF[..]) {
-                    //c.resources.led.toggle();
-                    //let event = event.transform(|i, j| (i, 11 - j));
-                    //c.spawn.handle_event(Some(event)).unwrap();
+                //c.resources.led.toggle();
+                //let event = event.transform(|i, j| (i, 11 - j));
+                //c.spawn.handle_event(Some(event)).unwrap();
                 //}
             }
         }
@@ -311,9 +314,7 @@ const APP: () = {
     fn handle_event(mut c: handle_event::Context, event: Option<Event>) {
         let report: KbHidReport = match event {
             None => c.resources.layout.tick().collect(),
-            Some(e) => {
-                c.resources.layout.event(e).collect()
-            }
+            Some(e) => c.resources.layout.event(e).collect(),
         };
         if !c
             .resources
@@ -347,19 +348,15 @@ const APP: () = {
                 .map_err(|_| nb::Error::<()>::WouldBlock));
         }
 
-        for event in c
-            .resources
-            .debouncer
-            .events(scan)
-        {
+        for event in c.resources.debouncer.events(scan) {
             c.resources.led.toggle();
             //for &b in &ser(event) {
-                //let res = block!(c
-                    //.resources
-                    //.uart
-                    //.write(b)
-                    //.map_err(|_| nb::Error::<()>::WouldBlock));
-                //let _: Result<_, u32> = res.map_err(|_| 1);
+            //let res = block!(c
+            //.resources
+            //.uart
+            //.write(b)
+            //.map_err(|_| nb::Error::<()>::WouldBlock));
+            //let _: Result<_, u32> = res.map_err(|_| 1);
             //}
             c.spawn.handle_event(Some(event)).unwrap();
         }
