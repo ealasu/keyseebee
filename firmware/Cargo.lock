@@ -28,11 +28,9 @@ dependencies = [
 
 [[package]]
 name = "atsamd-hal"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a845093b449700f878b8a91323e10307577e28f29f37c859645eaba2e655a60f"
+version = "0.10.0"
 dependencies = [
- "atsamd21e18a",
+ "atsamd21e",
  "bitfield",
  "cortex-m",
  "embedded-hal",
@@ -45,10 +43,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "atsamd21e18a"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9af27a7756d9b1c6f2038f0cce021aa2458cc117e93979a43b71c1a6f7f497a"
+name = "atsamd21e"
+version = "0.8.0"
 dependencies = [
  "bare-metal",
  "cortex-m",

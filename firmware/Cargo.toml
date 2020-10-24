@@ -5,8 +5,7 @@ authors = ["Guillaume Pinot <texitoi@texitoi.eu>"]
 edition = "2018"
 
 [dependencies]
-#stm32f0xx-hal = { version = "0.17.0", features = ["rt", "stm32f072", "stm32-usbd"] }
-atsamd-hal = {version = "*", default-features=false, features = ["usb"]}
+atsamd-hal = {path = "/extra/repos/oss/atsamd/hal", default-features=false, features = ["usb", "samd21e", "samd21e-rt", "unproven"]}
 cortex-m = "0.6"
 cortex-m-rt = { version = "0.6.10", features = ["device"] }
 panic-halt = "0.2.0"
@@ -40,8 +39,8 @@ opt-level = "z"
 
 [features]
 # ask the HAL to enable atsamd21e18a support
-default = ["rt", "atsamd-hal/samd21e18a", "unproven"]
+# default = ["rt", "atsamd-hal/samd21e18a", "unproven"]
 #rt = ["cortex-m-rt", "atsamd-hal/samd21e18a-rt"]
-rt = ["atsamd-hal/samd21e18a-rt"]
-unproven = ["atsamd-hal/unproven"]
-use_semihosting = []
+# rt = ["atsamd-hal/samd21e18a-rt"]
+# unproven = ["atsamd-hal/unproven"]
+# use_semihosting = []

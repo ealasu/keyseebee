@@ -8,7 +8,7 @@ pub use atsamd_hal as hal;
 use atsamd_hal::{
     clock::GenericClockController,
     define_pins,
-    gpio::{self, Floating, Input, IntoFunction, Output, Pa10, Pa11, PfC, Port, PullUp, PushPull},
+    gpio::{self, Floating, Input, IntoFunction, Output, Pa10, Pa11, Pa27, PfC, Port, PullUp, PushPull, OpenDrain},
     prelude::*,
     sercom::{PadPin, Sercom0Pad2, Sercom0Pad3, UART0},
     target_device::{
@@ -176,6 +176,7 @@ const APP: () = {
         // tx: serial::Tx<hal::pac::USART1>,
         // rx: serial::Rx<hal::pac::USART1>,
         uart: UART0<Sercom0Pad3<Pa11<PfC>>, Sercom0Pad2<Pa10<PfC>>, (), ()>,
+        led: Pa27<Output<OpenDrain>>,
     }
 
     #[init]
@@ -265,6 +266,10 @@ const APP: () = {
             &mut c.device.PM,
             (rx_pin, tx_pin),
         );
+        uart.enable_rxc_interrupt();
+
+        let mut led = port.pa27.into_open_drain_output(&mut port.port);
+        led.set_high().unwrap();
 
         init::LateResources {
             usb_dev,
@@ -274,20 +279,22 @@ const APP: () = {
             matrix,
             layout: Layout::new(LAYERS),
             uart,
+            led,
         }
     }
 
     // TODO: was USART0
-    #[task(binds = SERCOM0, priority = 2, spawn = [handle_event], resources = [uart])]
+    #[task(binds = SERCOM0, priority = 2, spawn = [handle_event], resources = [uart, led])]
     fn rx(c: rx::Context) {
         static mut BUF: [u8; 4] = [0; 4];
 
-        if let Ok(b) = c.resources.uart.read() {
+        while let Ok(b) = c.resources.uart.read() {
             BUF.rotate_left(1);
             BUF[3] = b;
 
             if BUF[3] == b'\n' {
                 if let Ok(event) = de(&BUF[..]) {
+                    c.resources.led.toggle();
                     let event = event.transform(|i, j| (i, 11 - j));
                     c.spawn.handle_event(Some(event)).unwrap();
                 }
@@ -306,7 +313,9 @@ const APP: () = {
     fn handle_event(mut c: handle_event::Context, event: Option<Event>) {
         let report: KbHidReport = match event {
             None => c.resources.layout.tick().collect(),
-            Some(e) => c.resources.layout.event(e).collect(),
+            Some(e) => {
+                c.resources.layout.event(e).collect()
+            }
         };
         if !c
             .resources
@@ -325,22 +334,27 @@ const APP: () = {
         binds = TC3,
         priority = 2,
         spawn = [handle_event],
-        resources = [matrix, debouncer, timer, uart],
+        resources = [matrix, debouncer, timer, uart, led],
     )]
     fn tick(c: tick::Context) {
         c.resources.timer.wait().ok();
+
+        // let res = c.resources.uart.read();
+        // res.is_ok();
 
         for event in c
             .resources
             .debouncer
             .events(c.resources.matrix.get().unwrap())
         {
+            c.resources.led.toggle();
             for &b in &ser(event) {
-                let _ = block!(c
+                let res = block!(c
                     .resources
                     .uart
                     .write(b)
                     .map_err(|_| nb::Error::<()>::WouldBlock));
+                let _: Result<_, u32> = res.map_err(|_| 1);
             }
             c.spawn.handle_event(Some(event)).unwrap();
         }

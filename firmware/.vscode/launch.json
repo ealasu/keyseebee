@@ -16,7 +16,8 @@
                 "add-symbol-file ${workspaceRoot}/target/thumbv6m-none-eabi/debug/keyseebee 0x00002000",
                 "enable breakpoint",
                 "monitor reset"
-            ]
+            ],
+            "preLaunchTask": "build"
         }
     ]
 }
