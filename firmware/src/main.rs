@@ -1,7 +1,6 @@
 #![no_main]
 #![no_std]
 
-// set the panic handler
 #[cfg(not(test))] use panic_halt as _;
 
 pub use atsamd_hal as hal;
@@ -42,8 +41,7 @@ use usb_device::{
     class::UsbClass,
     device::{UsbDevice, UsbDeviceState},
 };
-
-use keyseebee::codec::{encode_scan, decode_scan, SOF};
+use keyseebee::codec::{encode_scan, decode_scan, SOF, BUF_LEN};
 
 trait ResultExt<T> {
     fn get(self) -> T;
@@ -57,38 +55,38 @@ impl<T> ResultExt<T> for Result<T, Infallible> {
     }
 }
 
-define_pins!(
-    /// Maps the pins to their arduino names and
-    /// the numbers printed on the board.
-    struct Pins,
-    target_device: target_device,
-
-    /// Serial RX, sercom0pad3
-    pin rx = a11,
-    /// Serial TX, sercom0pad2
-    pin tx = a10,
-    /// The red LED
-    pin red_led = a27,
-    /// The USB D- pad
-    pin usb_dm = a24,
-    /// The USB D+ pad
-    pin usb_dp = a25,
-    /// Grounded for left side, disconnected for right side.
-    pin is_left = a23, // SCL
-
-    pin row0 = a19, // 12
-    pin row1 = a18, // 10
-    pin row2 = a7, // 9
-    pin row3 = a15, // 5
-
-    pin col0 = a14, // 2
-    pin col1 = a9, // 3
-    pin col2 = a8, // 4
-    pin col3 = a5, // A4
-    pin col4 = a6, // 8
-    pin col5 = a16, // 11
-    pin col6 = a17, // 13
-);
+//define_pins!(
+//    /// Maps the pins to their arduino names and
+//    /// the numbers printed on the board.
+//    struct Pins,
+//    target_device: target_device,
+//
+//    /// Serial RX, sercom0pad3
+//    pin rx = a11,
+//    /// Serial TX, sercom0pad2
+//    pin tx = a10,
+//    /// The red LED
+//    pin red_led = a27,
+//    /// The USB D- pad
+//    pin usb_dm = a24,
+//    /// The USB D+ pad
+//    pin usb_dp = a25,
+//    /// Grounded for left side, disconnected for right side.
+//    pin is_left = a23, // SCL
+//
+//    pin row0 = a19, // 12
+//    pin row1 = a18, // 10
+//    pin row2 = a7, // 9
+//    pin row3 = a15, // 5
+//
+//    pin col0 = a14, // 2
+//    pin col1 = a9, // 3
+//    pin col2 = a8, // 4
+//    pin col3 = a5, // A4
+//    pin col4 = a6, // 8
+//    pin col5 = a16, // 11
+//    pin col6 = a17, // 13
+//);
 
 pub struct Cols(
     atsamd_hal::gpio::Pa14<Input<PullUp>>,
@@ -176,10 +174,9 @@ const APP: () = {
         usb_class: keyberon::Class<'static, UsbBus, ()>,
         matrix: Matrix<Cols, Rows>,
         debouncer: Debouncer<PressedKeys<U4, U7>>,
+        other_debouncer: Debouncer<PressedKeys<U4, U7>>,
         layout: Layout,
         timer: TimerCounter<TC3>,
-        // tx: serial::Tx<hal::pac::USART1>,
-        // rx: serial::Rx<hal::pac::USART1>,
         uart: UART0<Sercom0Pad3<Pa11<PfC>>, Sercom0Pad2<Pa10<PfC>>, (), ()>,
         led: Pa27<Output<OpenDrain>>,
     }
@@ -271,6 +268,7 @@ const APP: () = {
             usb_class,
             timer,
             debouncer: Debouncer::new(PressedKeys::default(), PressedKeys::default(), 5),
+            other_debouncer: Debouncer::new(PressedKeys::default(), PressedKeys::default(), 5),
             matrix,
             layout: Layout::new(LAYERS),
             uart,
@@ -279,21 +277,20 @@ const APP: () = {
     }
 
     // TODO: was USART0
-    #[task(binds = SERCOM0, priority = 2, spawn = [handle_event], resources = [uart, led])]
+    #[task(binds = SERCOM0, priority = 2, spawn = [handle_event], resources = [uart, other_debouncer])]
     fn rx(c: rx::Context) {
-        static mut BUF: [u8; 6] = [0; 6];
+        static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];
 
         while let Ok(b) = c.resources.uart.read() {
             BUF.rotate_left(1);
-            BUF[5] = b;
+            BUF[BUF_LEN - 1] = b;
             if BUF[0] == SOF {
-                let scan = decode_scan(&BUF);
-
-                //if let Ok(event) = de(&BUF[..]) {
-                //c.resources.led.toggle();
-                //let event = event.transform(|i, j| (i, 11 - j));
-                //c.spawn.handle_event(Some(event)).unwrap();
-                //}
+                if let Some(scan) = decode_scan(&BUF) {
+                    for event in c.resources.other_debouncer.events(scan) {
+                        let event = event.transform(|i, j| (i, 11 - j));
+                        c.spawn.handle_event(Some(event)).unwrap();
+                    }
+                }
             }
         }
     }
@@ -305,8 +302,9 @@ const APP: () = {
         }
     }
 
-    #[task(priority = 3, capacity = 8, resources = [usb_dev, usb_class, layout])]
+    #[task(priority = 3, capacity = 8, resources = [usb_dev, usb_class, layout, led])]
     fn handle_event(mut c: handle_event::Context, event: Option<Event>) {
+        c.resources.led.toggle();
         let report: KbHidReport = match event {
             None => c.resources.layout.tick().collect(),
             Some(e) => c.resources.layout.event(e).collect(),
@@ -328,14 +326,13 @@ const APP: () = {
         binds = TC3,
         priority = 2,
         spawn = [handle_event],
-        resources = [matrix, debouncer, timer, uart, led],
+        resources = [matrix, debouncer, timer, uart],
     )]
     fn tick(c: tick::Context) {
         c.resources.timer.wait().ok();
 
         let scan = c.resources.matrix.get().unwrap();
-        let buf = encode_scan(&scan);
-        for &b in buf.iter() {
+        for &b in &encode_scan(&scan) {
             let _ = block!(c
                 .resources
                 .uart
@@ -344,15 +341,6 @@ const APP: () = {
         }
 
         for event in c.resources.debouncer.events(scan) {
-            c.resources.led.toggle();
-            //for &b in &ser(event) {
-            //let res = block!(c
-            //.resources
-            //.uart
-            //.write(b)
-            //.map_err(|_| nb::Error::<()>::WouldBlock));
-            //let _: Result<_, u32> = res.map_err(|_| 1);
-            //}
             c.spawn.handle_event(Some(event)).unwrap();
         }
         c.spawn.handle_event(None).unwrap();
@@ -362,17 +350,3 @@ const APP: () = {
         fn ADC();
     }
 };
-
-// fn de(bytes: &[u8]) -> Result<Event, ()> {
-//     match *bytes {
-//         [b'P', i, j, b'\n'] => Ok(Event::Press(i, j)),
-//         [b'R', i, j, b'\n'] => Ok(Event::Release(i, j)),
-//         _ => Err(()),
-//     }
-// }
-// fn ser(e: Event) -> [u8; 4] {
-//     match e {
-//         Event::Press(i, j) => [b'P', i, j, b'\n'],
-//         Event::Release(i, j) => [b'R', i, j, b'\n'],
-//     }
-// }

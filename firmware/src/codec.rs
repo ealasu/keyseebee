@@ -7,7 +7,7 @@ use generic_array::{
 use keyberon::matrix::PressedKeys;
 
 pub const SOF: u8 = 1 << 7;
-const BUF_LEN: usize = 6; // Must be ROWS * COLS / 8 + 2, rounded up
+pub const BUF_LEN: usize = 6; // Must be ROWS * COLS / 8 + 2, rounded up
 
 pub fn encode_scan(scan: &PressedKeys<U4, U7>) -> [u8; BUF_LEN] {
     let mut buf = [0u8; BUF_LEN];
