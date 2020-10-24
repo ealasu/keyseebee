@@ -1,6 +1,9 @@
 #![no_main]
 #![no_std]
 
+mod crc8;
+mod codec;
+
 // set the panic handler
 use panic_halt as _;
 
@@ -21,8 +24,9 @@ use atsamd_hal::{
 };
 use core::convert::Infallible;
 use embedded_hal::digital::v2::{InputPin, OutputPin};
+use itertools::Itertools;
 
-use generic_array::typenum::{U4, U6};
+use generic_array::typenum::{U4, U7};
 use keyberon::{
     action::{k, l, m, Action, Action::*},
     debounce::Debouncer,
@@ -39,6 +43,9 @@ use usb_device::{
     class::UsbClass,
     device::{UsbDevice, UsbDeviceState},
 };
+
+pub const ROWS: usize = 4;
+pub const COLS: usize = 7;
 
 trait ResultExt<T> {
     fn get(self) -> T;
@@ -97,8 +104,8 @@ pub struct Cols(
 impl_heterogenous_array! {
     Cols,
     dyn InputPin<Error = ()>,
-    U6,
-    [0, 1, 2, 3, 4, 5]
+    U7,
+    [0, 1, 2, 3, 4, 5, 6]
 }
 
 pub struct Rows(
@@ -170,7 +177,7 @@ const APP: () = {
         usb_dev: UsbDevice<'static, UsbBus>,
         usb_class: keyberon::Class<'static, UsbBus, ()>,
         matrix: Matrix<Cols, Rows>,
-        debouncer: Debouncer<PressedKeys<U4, U6>>,
+        debouncer: Debouncer<PressedKeys<U4, U7>>,
         layout: Layout,
         timer: TimerCounter<TC3>,
         // tx: serial::Tx<hal::pac::USART1>,
@@ -215,16 +222,6 @@ const APP: () = {
         )
         .unwrap();
 
-        // let mut rcc = c
-        //     .device
-        //     .RCC
-        //     .configure()
-        //     .hsi48()
-        //     .enable_crs(c.device.CRS)
-        //     .sysclk(48.mhz())
-        //     .pclk(24.mhz())
-        //     .freeze(&mut c.device.FLASH);
-
         let usb_clock = &clocks.usb(&gclk0).unwrap();
         let usb_bus = {
             *USB_BUS = Some(UsbBusAllocator::new(UsbBus::new(
@@ -261,7 +258,7 @@ const APP: () = {
             .expect("Could not configure sercom0 core clock");
         let uart = UART0::new(
             &uart_clk,
-            9600.hz(),
+            115200.hz(),
             c.device.SERCOM0,
             &mut c.device.PM,
             (rx_pin, tx_pin),
@@ -286,18 +283,19 @@ const APP: () = {
     // TODO: was USART0
     #[task(binds = SERCOM0, priority = 2, spawn = [handle_event], resources = [uart, led])]
     fn rx(c: rx::Context) {
-        static mut BUF: [u8; 4] = [0; 4];
+        static mut BUF: [u8; 6] = [0; 6];
 
         while let Ok(b) = c.resources.uart.read() {
             BUF.rotate_left(1);
-            BUF[3] = b;
+            BUF[5] = b;
+            if BUF[0] == codec::SOF {
+                let scan = codec::decode_scan(&BUF);
 
-            if BUF[3] == b'\n' {
-                if let Ok(event) = de(&BUF[..]) {
-                    c.resources.led.toggle();
-                    let event = event.transform(|i, j| (i, 11 - j));
-                    c.spawn.handle_event(Some(event)).unwrap();
-                }
+                //if let Ok(event) = de(&BUF[..]) {
+                    //c.resources.led.toggle();
+                    //let event = event.transform(|i, j| (i, 11 - j));
+                    //c.spawn.handle_event(Some(event)).unwrap();
+                //}
             }
         }
     }
@@ -339,23 +337,30 @@ const APP: () = {
     fn tick(c: tick::Context) {
         c.resources.timer.wait().ok();
 
-        // let res = c.resources.uart.read();
-        // res.is_ok();
+        let scan = c.resources.matrix.get().unwrap();
+        let buf = codec::encode_scan(&scan);
+        for &b in buf.iter() {
+            let _ = block!(c
+                .resources
+                .uart
+                .write(b)
+                .map_err(|_| nb::Error::<()>::WouldBlock));
+        }
 
         for event in c
             .resources
             .debouncer
-            .events(c.resources.matrix.get().unwrap())
+            .events(scan)
         {
             c.resources.led.toggle();
-            for &b in &ser(event) {
-                let res = block!(c
-                    .resources
-                    .uart
-                    .write(b)
-                    .map_err(|_| nb::Error::<()>::WouldBlock));
-                let _: Result<_, u32> = res.map_err(|_| 1);
-            }
+            //for &b in &ser(event) {
+                //let res = block!(c
+                    //.resources
+                    //.uart
+                    //.write(b)
+                    //.map_err(|_| nb::Error::<()>::WouldBlock));
+                //let _: Result<_, u32> = res.map_err(|_| 1);
+            //}
             c.spawn.handle_event(Some(event)).unwrap();
         }
         c.spawn.handle_event(None).unwrap();
@@ -366,16 +371,16 @@ const APP: () = {
     }
 };
 
-fn de(bytes: &[u8]) -> Result<Event, ()> {
-    match *bytes {
-        [b'P', i, j, b'\n'] => Ok(Event::Press(i, j)),
-        [b'R', i, j, b'\n'] => Ok(Event::Release(i, j)),
-        _ => Err(()),
-    }
-}
-fn ser(e: Event) -> [u8; 4] {
-    match e {
-        Event::Press(i, j) => [b'P', i, j, b'\n'],
-        Event::Release(i, j) => [b'R', i, j, b'\n'],
-    }
-}
+// fn de(bytes: &[u8]) -> Result<Event, ()> {
+//     match *bytes {
+//         [b'P', i, j, b'\n'] => Ok(Event::Press(i, j)),
+//         [b'R', i, j, b'\n'] => Ok(Event::Release(i, j)),
+//         _ => Err(()),
+//     }
+// }
+// fn ser(e: Event) -> [u8; 4] {
+//     match e {
+//         Event::Press(i, j) => [b'P', i, j, b'\n'],
+//         Event::Release(i, j) => [b'R', i, j, b'\n'],
+//     }
+// }
