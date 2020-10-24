@@ -1,11 +1,8 @@
 #![no_main]
 #![no_std]
 
-mod codec;
-mod crc8;
-
 // set the panic handler
-use panic_halt as _;
+#[cfg(not(test))] use panic_halt as _;
 
 pub use atsamd_hal as hal;
 use atsamd_hal::{
@@ -27,7 +24,6 @@ use atsamd_hal::{
 };
 use core::convert::Infallible;
 use embedded_hal::digital::v2::{InputPin, OutputPin};
-use itertools::Itertools;
 
 use generic_array::typenum::{U4, U7};
 use keyberon::{
@@ -47,8 +43,7 @@ use usb_device::{
     device::{UsbDevice, UsbDeviceState},
 };
 
-pub const ROWS: usize = 4;
-pub const COLS: usize = 7;
+use keyseebee::codec::{encode_scan, decode_scan, SOF};
 
 trait ResultExt<T> {
     fn get(self) -> T;
@@ -291,8 +286,8 @@ const APP: () = {
         while let Ok(b) = c.resources.uart.read() {
             BUF.rotate_left(1);
             BUF[5] = b;
-            if BUF[0] == codec::SOF {
-                let scan = codec::decode_scan(&BUF);
+            if BUF[0] == SOF {
+                let scan = decode_scan(&BUF);
 
                 //if let Ok(event) = de(&BUF[..]) {
                 //c.resources.led.toggle();
@@ -339,7 +334,7 @@ const APP: () = {
         c.resources.timer.wait().ok();
 
         let scan = c.resources.matrix.get().unwrap();
-        let buf = codec::encode_scan(&scan);
+        let buf = encode_scan(&scan);
         for &b in buf.iter() {
             let _ = block!(c
                 .resources

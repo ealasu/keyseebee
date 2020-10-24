@@ -7,7 +7,7 @@ use generic_array::{
 use keyberon::matrix::PressedKeys;
 
 pub const SOF: u8 = 1 << 7;
-const BUF_LEN: usize = 6;
+const BUF_LEN: usize = 6; // Must be ROWS * COLS / 8 + 2, rounded up
 
 pub fn encode_scan(scan: &PressedKeys<U4, U7>) -> [u8; BUF_LEN] {
     let mut buf = [0u8; BUF_LEN];
@@ -42,22 +42,28 @@ pub fn decode_scan(buf: &[u8; BUF_LEN]) -> Option<PressedKeys<U4, U7>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::new_half_scan;
+    use generic_array::arr;
+    use generic_array::typenum::{U4,U7};
 
     #[test]
     fn test_encode() {
-        let mut scan = new_half_scan();
-        assert_eq!([128, 0, 0, 0, 0, 0], encode(scan));
-        scan[0][0] = true;
-        assert_eq!([128, 0b001, 0b00, 0, 0, 143], encode(scan));
-        scan[0][1] = true;
-        assert_eq!([128, 0b011, 0b00, 0, 0, 136], encode(scan));
-        scan[0][2] = true;
-        assert_eq!([128, 0b111, 0b00, 0, 0, 134], encode(scan));
-        scan[0][6] = true;
-        assert_eq!([128, 0b1000111, 0b00, 0, 0, 102], encode(scan));
-        scan[1][0] = true;
-        assert_eq!([128, 0b1000111, 0b01, 0, 0, 205], encode(scan));
+        let mut scan: PressedKeys<U4, U7> = PressedKeys(arr![GenericArray<bool, U7>;
+            arr![bool; false, false, false, false, false, false, false],
+            arr![bool; false, false, false, false, false, false, false],
+            arr![bool; false, false, false, false, false, false, false],
+            arr![bool; false, false, false, false, false, false, false],
+        ]);
+        assert_eq!([128, 0, 0, 0, 0, 0], encode_scan(&scan));
+        scan.0[0][0] = true;
+        assert_eq!([128, 0b001, 0b00, 0, 0, 143], encode_scan(&scan));
+        scan.0[0][1] = true;
+        assert_eq!([128, 0b011, 0b00, 0, 0, 136], encode_scan(&scan));
+        scan.0[0][2] = true;
+        assert_eq!([128, 0b111, 0b00, 0, 0, 134], encode_scan(&scan));
+        scan.0[0][6] = true;
+        assert_eq!([128, 0b1000111, 0b00, 0, 0, 102], encode_scan(&scan));
+        scan.0[1][0] = true;
+        assert_eq!([128, 0b1000111, 0b01, 0, 0, 205], encode_scan(&scan));
     }
 
     #[test]
