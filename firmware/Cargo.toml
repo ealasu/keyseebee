@@ -25,10 +25,10 @@ opt-level = "z"
 debug = true
 
 [profile.dev]
-#lto = true
-#incremental = false
-#opt-level = "z"
-#debug = true
+lto = true
+incremental = false
+# opt-level = "s"
+debug = true
 
 # don't optimize the `cortex-m-rt` crate
 [profile.dev.package.cortex-m-rt] # +

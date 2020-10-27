@@ -177,7 +177,9 @@ const APP: () = {
         other_debouncer: Debouncer<PressedKeys<U4, U7>>,
         layout: Layout,
         timer: TimerCounter<TC3>,
-        uart: UART0<Sercom0Pad3<Pa11<PfC>>, Sercom0Pad2<Pa10<PfC>>, (), ()>,
+        // uart: UART0<Sercom0Pad3<Pa11<PfC>>, Sercom0Pad2<Pa10<PfC>>, (), ()>,
+        rx: atsamd_hal::sercom::Rx0,
+        tx: atsamd_hal::sercom::Tx0,
         led: Pa27<Output<OpenDrain>>,
     }
 
@@ -259,6 +261,7 @@ const APP: () = {
             (rx_pin, tx_pin),
         );
         uart.enable_rxc_interrupt();
+        let (rx, tx) = uart.split();
 
         let mut led = port.pa27.into_open_drain_output(&mut port.port);
         led.set_high().unwrap();
@@ -271,17 +274,17 @@ const APP: () = {
             other_debouncer: Debouncer::new(PressedKeys::default(), PressedKeys::default(), 5),
             matrix,
             layout: Layout::new(LAYERS),
-            uart,
+            rx,
+            tx,
             led,
         }
     }
 
-    // TODO: was USART0
-    #[task(binds = SERCOM0, priority = 2, spawn = [handle_event], resources = [uart, other_debouncer])]
+    #[task(binds = SERCOM0, priority = 1, spawn = [handle_event], resources = [rx, other_debouncer])]
     fn rx(c: rx::Context) {
         static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];
 
-        while let Ok(b) = c.resources.uart.read() {
+        while let Ok(b) = c.resources.rx.read() {
             BUF.rotate_left(1);
             BUF[BUF_LEN - 1] = b;
             if BUF[0] == SOF {
@@ -304,10 +307,12 @@ const APP: () = {
 
     #[task(priority = 3, capacity = 8, resources = [usb_dev, usb_class, layout, led])]
     fn handle_event(mut c: handle_event::Context, event: Option<Event>) {
-        c.resources.led.toggle();
         let report: KbHidReport = match event {
             None => c.resources.layout.tick().collect(),
-            Some(e) => c.resources.layout.event(e).collect(),
+            Some(e) => {
+                c.resources.led.toggle();
+                c.resources.layout.event(e).collect()
+            },
         };
         if !c
             .resources
@@ -326,16 +331,17 @@ const APP: () = {
         binds = TC3,
         priority = 2,
         spawn = [handle_event],
-        resources = [matrix, debouncer, timer, uart],
+        resources = [matrix, debouncer, timer, tx],
     )]
     fn tick(c: tick::Context) {
         c.resources.timer.wait().ok();
 
         let scan = c.resources.matrix.get().unwrap();
-        for &b in &encode_scan(&scan) {
+        let buf = encode_scan(&scan);
+        for &b in &buf {
             let _ = block!(c
                 .resources
-                .uart
+                .tx
                 .write(b)
                 .map_err(|_| nb::Error::<()>::WouldBlock));
         }
