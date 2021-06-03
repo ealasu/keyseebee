@@ -5,7 +5,7 @@ authors = ["Guillaume Pinot <texitoi@texitoi.eu>"]
 edition = "2018"
 
 [dependencies]
-atsamd-hal = {path = "/extra/repos/oss/atsamd/hal", default-features=false, features = ["usb", "samd21e", "samd21e-rt", "unproven"]}
+atsamd-hal = {path = "../../oss/atsamd/hal", default-features=false, features = ["usb", "samd21e", "samd21e-rt", "unproven"]}
 cortex-m = "0.6"
 cortex-m-rt = { version = "0.6.10", features = ["device"] }
 panic-halt = "0.2.0"
@@ -29,6 +29,7 @@ lto = true
 incremental = false
 # opt-level = "s"
 debug = true
+codegen-units = 1 # better optimizations
 
 # don't optimize the `cortex-m-rt` crate
 [profile.dev.package.cortex-m-rt] # +
@@ -43,3 +44,4 @@ opt-level = "z"
 default = ["atsamd-hal/samd21e", "atsamd-hal/samd21e-rt", "atsamd-hal/unproven"]
 #rt = ["cortex-m-rt", "atsamd-hal/samd21e18a-rt"]
 # use_semihosting = []
+ 

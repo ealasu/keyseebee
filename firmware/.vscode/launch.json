@@ -10,10 +10,17 @@
             "interface": "swd",
             "device": "ATSAMD21E17",
             "runToMain": true,
-            "preRestartCommands": [
-                "file /extra/repos/oss/uf2-samdx1/build/tau/bootloader-tau-v3.10.0-5-g9d601f4.elf",
+            "preLaunchCommands": [
+                //"file ~/repos/oss/uf2-samdx1/build/tau/bootloader-tau-v3.10.0-5-g9d601f4.elf",
+                //"load",
+                //"add-symbol-file ${workspaceRoot}/target/thumbv6m-none-eabi/debug/keyseebee 0x00000000",
+
+                "file ${workspaceRoot}/target/thumbv6m-none-eabi/debug/keyseebee",
+                //"monitor unlock_flash",
+                // "monitor unlock_bootprot",
+                // "monitor erase_mass",    
+
                 "load",
-                "add-symbol-file ${workspaceRoot}/target/thumbv6m-none-eabi/debug/keyseebee 0x00002000",
                 "enable breakpoint",
                 "monitor reset"
             ],

@@ -1,0 +1,7 @@
+h
+erase
+loadfile target/firmware.bin
+r
+g
+q
+

@@ -4,6 +4,7 @@ use generic_array::{
     typenum::{U4, U7},
     GenericArray,
 };
+use cortex_m::asm::nop;
 use keyberon::matrix::PressedKeys;
 
 pub const SOF: u8 = 1 << 7;
@@ -14,6 +15,9 @@ pub fn encode_scan(scan: &PressedKeys<U4, U7>) -> [u8; BUF_LEN] {
     buf[0] = SOF;
     for (i, &pressed) in scan.0.iter().flat_map(|r| r.iter()).enumerate() {
         buf[i / 7 + 1] |= if pressed { 1 << (i % 7) } else { 0 };
+        if pressed {
+            nop();
+        }
     }
     let checksum = crc8::MAXIM.calc_buf(&buf[1..BUF_LEN - 1]);
     buf[BUF_LEN - 1] = checksum;

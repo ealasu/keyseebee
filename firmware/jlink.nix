@@ -1,43 +1,16 @@
-with import <nixpkgs> {
-  overlays = [
-    (import (fetchTarball https://github.com/mozilla/nixpkgs-mozilla/archive/ad227c55c34124cde17b30c9bb28be6cd3c70815.tar.gz))
-  ];
-};
-pkgs.mkShell {
-  buildInputs = with pkgs; [
-    #(rustChannelOf { rustToolchain = ./rust-toolchain.toml; }).rust
-
-    (latest.rustChannels.stable.rust.override {
-      extensions = [
-        "rust-src"
-        "rls-preview"
-        "clippy-preview"
-        "rustfmt-preview"
-        "llvm-tools-preview"
-      ];
-      targets = [
-        "thumbv6m-none-eabi"
-      ];
-    })
-    pkgconfig
-    cargo-edit
-    cargo-generate
-    openssl
-    openocd
-    libusb
-    gcc-arm-embedded
-    #(import ./jlink.nix)
+# Run this first: nix-store --add-fixed sha256 ~/Downloads/JLink_Linux_V686e_x86_64.tgz
+{callPackage}:
 
 (callPackage ({ stdenv, requireFile, autoPatchelfHook, substituteAll,
   qt4, fontconfig, freetype, libusb, libICE, libSM, ncurses5, udev,
   libX11, libXext, libXcursor, libXfixes, libXrender, libXrandr }:
 let
   architecture = "x86_64";
-  sha256 = "686c0a7698f5c993288f770cec4945c9c158396c612eb57ba26a1a12798f2ada";
+  sha256 = "7bca4caea63f076c53d1aeed4ee7561c66fd73605f3e1528ee65929a3348ce3a";
 in
 stdenv.mkDerivation rec {
   pname = "jlink";
-  version = "V722";
+  version = "V686e";
 
   src = requireFile {
     name = "JLink_Linux_${version}_${architecture}.tgz";
@@ -60,7 +33,6 @@ stdenv.mkDerivation rec {
   installPhase = ''
     mkdir -p $out/{JLink,bin}
     cp -R * $out/JLink
-    rm $out/JLink/JLinkSTM32Exe
     ln -s $out/JLink/J* $out/bin/
     rm -r $out/bin/JLinkDevices.xml $out/JLink/libQt*
     install -D -t $out/lib/udev/rules.d 99-jlink.rules
@@ -70,9 +42,3 @@ stdenv.mkDerivation rec {
     patchelf --add-needed libudev.so.1 $out/JLink/libjlinkarm.so
   '';
 }){})
-
-  ];
-
-  # Set Environment Variables
-  #RUST_BACKTRACE = 1;
-}
