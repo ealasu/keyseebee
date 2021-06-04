@@ -1,0 +1,10 @@
+[package]
+name = "stuff"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+generic-array = "0.14"
+arrayvec = {version="*", default-features=false}
+cortex-m = "0.6"
+keyberon = {path = "../../../oss/keyberon"}

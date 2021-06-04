@@ -41,7 +41,7 @@ use usb_device::{
     class::UsbClass,
     device::{UsbDevice, UsbDeviceState},
 };
-use keyseebee::codec::{encode_scan, decode_scan, SOF, BUF_LEN};
+use stuff::codec::{encode_scan, decode_scan, SOF, BUF_LEN};
 
 trait ResultExt<T> {
     fn get(self) -> T;
@@ -124,11 +124,15 @@ const L2_ENTER: Action = HoldTap {
     timeout: 140,
     hold: &l(2),
     tap: &k(Enter),
+    config: keyberon::action::HoldTapConfig::Default,
+    tap_hold_interval: 0
 };
 const L1_SP: Action = HoldTap {
     timeout: 200,
     hold: &l(1),
     tap: &k(Space),
+    config: keyberon::action::HoldTapConfig::Default,
+    tap_hold_interval: 0
 };
 const CSPACE: Action = m(&[LCtrl, Space]);
 macro_rules! s {
@@ -238,7 +242,7 @@ const APP: () = {
             c.device.TC3,
             &mut c.device.PM,
         );
-        timer.start(1.ms());
+        timer.start(1.s());
         timer.enable_interrupt();
 
         let rx_pin: Sercom0Pad3<_> = port
@@ -255,7 +259,7 @@ const APP: () = {
             .expect("Could not configure sercom0 core clock");
         let uart = UART0::new(
             &uart_clk,
-            115200.hz(),
+            57600.hz(), //115200.hz(),
             c.device.SERCOM0,
             &mut c.device.PM,
             (rx_pin, tx_pin),
@@ -305,13 +309,21 @@ const APP: () = {
         }
     }
 
-    #[task(priority = 3, capacity = 8, resources = [usb_dev, usb_class, layout, led])]
+    #[task(priority = 3, capacity = 8, resources = [
+        usb_dev, usb_class, layout,
+        // led
+        ])]
     fn handle_event(mut c: handle_event::Context, event: Option<Event>) {
-        let report: KbHidReport = match event {
-            None => c.resources.layout.tick().collect(),
+        c.resources.layout.tick();
+        let report: KbHidReport = c.resources.layout.keycodes().collect();
+         match event {
+            None => {},
+            //     c.resources.layout.tick();
+            //     c.resources.layout.keycodes()
+            // },
             Some(e) => {
-                c.resources.led.toggle();
-                c.resources.layout.event(e).collect()
+                // c.resources.led.toggle();
+                // c.resources.layout.event(e).collect()
             },
         };
         if !c
@@ -331,10 +343,12 @@ const APP: () = {
         binds = TC3,
         priority = 2,
         spawn = [handle_event],
-        resources = [matrix, debouncer, timer, tx],
+        resources = [matrix, debouncer, timer, tx, led],
     )]
     fn tick(c: tick::Context) {
+        // c.resources.timer.clear_interrupt(timer::Event::TimeOut);
         c.resources.timer.wait().ok();
+        c.resources.led.toggle();
 
         let scan = c.resources.matrix.get().unwrap();
         let buf = encode_scan(&scan);

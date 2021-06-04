@@ -7,16 +7,17 @@ edition = "2018"
 [dependencies]
 atsamd-hal = {path = "../../oss/atsamd/hal", default-features=false, features = ["usb", "samd21e", "samd21e-rt", "unproven"]}
 cortex-m = "0.6"
-cortex-m-rt = { version = "0.6.10", features = ["device"] }
-panic-halt = "0.2.0"
-keyberon = "0.1.0"
-cortex-m-rtic = "0.5"
-generic-array = "0.13"
-embedded-hal = "0.2"
-usb-device = "0.2"
-nb = "1.0.0"
-itertools = {version ="0.9", default-features=false}
-arrayvec = {version="0.5", default-features=false}
+cortex-m-rt = { version = "*", features = ["device"] }
+panic-halt = "*"
+keyberon = {path = "../../oss/keyberon"}
+cortex-m-rtic = "*"
+generic-array = "*"
+embedded-hal = "*"
+usb-device = "*"
+nb = "0.1"
+itertools = {version ="*", default-features=false}
+arrayvec = {version="*", default-features=false}
+stuff = {path = "./stuff"}
 
 [profile.release]
 lto = true
@@ -25,20 +26,26 @@ opt-level = "z"
 debug = true
 
 [profile.dev]
-lto = true
+lto = 'fat'
 incremental = false
-# opt-level = "s"
+opt-level = "s"
 debug = true
 codegen-units = 1 # better optimizations
 
 # don't optimize the `cortex-m-rt` crate
 [profile.dev.package.cortex-m-rt] # +
 opt-level = 0 # +
+debug = true
+
+[profile.dev.package.stuff] # +
+opt-level = 0 # +
+debug = true
 
 # but do optimize all the other dependencies
 [profile.dev.package."*"]
 codegen-units = 1 # better optimizations
 opt-level = "z"
+debug = false
 
 [features]
 default = ["atsamd-hal/samd21e", "atsamd-hal/samd21e-rt", "atsamd-hal/unproven"]
