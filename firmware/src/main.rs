@@ -237,12 +237,13 @@ const APP: () = {
         let usb_class = keyberon::new_class(usb_bus, ());
         let usb_dev = keyberon::new_device(usb_bus);
 
+
         let mut timer = TimerCounter::tc3_(
             &clocks.tcc2_tc3(&gclk0).unwrap(),
             c.device.TC3,
             &mut c.device.PM,
         );
-        timer.start(1.s());
+        timer.start(4.ms());
         timer.enable_interrupt();
 
         let rx_pin: Sercom0Pad3<_> = port
@@ -301,7 +302,7 @@ const APP: () = {
             }
         }
     }
-
+ 
     #[task(binds = USB, priority = 4, resources = [usb_dev, usb_class])]
     fn usb_rx(c: usb_rx::Context) {
         if c.resources.usb_dev.poll(&mut [c.resources.usb_class]) {
@@ -311,7 +312,7 @@ const APP: () = {
 
     #[task(priority = 3, capacity = 8, resources = [
         usb_dev, usb_class, layout,
-        // led
+        led
         ])]
     fn handle_event(mut c: handle_event::Context, event: Option<Event>) {
         c.resources.layout.tick();
@@ -322,7 +323,7 @@ const APP: () = {
             //     c.resources.layout.keycodes()
             // },
             Some(e) => {
-                // c.resources.led.toggle();
+                c.resources.led.toggle();
                 // c.resources.layout.event(e).collect()
             },
         };
@@ -343,12 +344,12 @@ const APP: () = {
         binds = TC3,
         priority = 2,
         spawn = [handle_event],
-        resources = [matrix, debouncer, timer, tx, led],
+        resources = [matrix, debouncer, timer, tx],
     )]
     fn tick(c: tick::Context) {
         // c.resources.timer.clear_interrupt(timer::Event::TimeOut);
         c.resources.timer.wait().ok();
-        c.resources.led.toggle();
+        // c.resources.led.toggle();
 
         let scan = c.resources.matrix.get().unwrap();
         let buf = encode_scan(&scan);
