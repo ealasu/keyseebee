@@ -8,11 +8,12 @@ use cortex_m::asm::nop;
 use keyberon::matrix::PressedKeys;
 
 pub const SOF: u8 = 1 << 7;
-pub const BUF_LEN: usize = 6; // Must be ROWS * COLS / 8 + 2, rounded up
+pub const TX_BUF_LEN: usize = 6; // Must be ROWS * COLS / 8 + 2, rounded up
+pub const RX_BUF_LEN: usize = TX_BUF_LEN - 1; // Minus one because we don't store the SOF byte
 pub const SCAN_LEN: usize = COLS * ROWS;
 
-pub fn encode_scan(scan: &PressedKeys<U4, U7>) -> [u8; BUF_LEN] {
-    let mut buf = [0u8; BUF_LEN];
+pub fn encode_scan(scan: &PressedKeys<U4, U7>) -> [u8; TX_BUF_LEN] {
+    let mut buf = [0u8; TX_BUF_LEN];
     buf[0] = SOF;
     for (i, &pressed) in scan.0.iter().flat_map(|r| r.iter()).enumerate() {
         if pressed {
@@ -21,15 +22,15 @@ pub fn encode_scan(scan: &PressedKeys<U4, U7>) -> [u8; BUF_LEN] {
             buf[i / 7 + 1] |= 0;
         }
     }
-    let checksum = crc8::MAXIM.calc_buf(&buf[1..BUF_LEN - 1]);
-    buf[BUF_LEN - 1] = checksum;
+    let checksum = crc8::MAXIM.calc_buf(&buf[1..TX_BUF_LEN - 1]);
+    buf[TX_BUF_LEN - 1] = checksum;
     buf
 }
 
-pub fn decode_scan(buf: &[u8; BUF_LEN]) -> Option<PressedKeys<U4, U7>> {
-    let actual_checksum = crc8::MAXIM.calc_buf(&buf[1..BUF_LEN - 1]);
-    if actual_checksum == buf[5] {
-        let flat_scan: ArrayVec<bool, SCAN_LEN> = buf[1..BUF_LEN - 1]
+pub fn decode_scan(buf: &[u8; RX_BUF_LEN]) -> Option<PressedKeys<U4, U7>> {
+    let actual_checksum = crc8::MAXIM.calc_buf(&buf[..RX_BUF_LEN - 1]);
+    if actual_checksum == buf[RX_BUF_LEN - 1] {
+        let flat_scan: ArrayVec<bool, SCAN_LEN> = buf[..RX_BUF_LEN - 1]
             .iter()
             .flat_map(|&b| (0..7).map(move |i| b & (1 << i) != 0))
             .collect();

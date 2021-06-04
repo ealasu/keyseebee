@@ -41,7 +41,8 @@ use usb_device::{
     class::UsbClass,
     device::{UsbDevice, UsbDeviceState},
 };
-use stuff::codec::{encode_scan, decode_scan, SOF, BUF_LEN};
+use stuff::codec::{encode_scan, decode_scan, SOF, RX_BUF_LEN};
+use keyseebee::layers::LAYERS;
 
 trait ResultExt<T> {
     fn get(self) -> T;
@@ -117,60 +118,6 @@ impl_heterogenous_array! {
     [0, 1, 2, 3]
 }
 
-const CUT: Action = m(&[LShift, Delete]);
-const COPY: Action = m(&[LCtrl, Insert]);
-const PASTE: Action = m(&[LShift, Insert]);
-const L2_ENTER: Action = HoldTap {
-    timeout: 140,
-    hold: &l(2),
-    tap: &k(Enter),
-    config: keyberon::action::HoldTapConfig::Default,
-    tap_hold_interval: 0
-};
-const L1_SP: Action = HoldTap {
-    timeout: 200,
-    hold: &l(1),
-    tap: &k(Space),
-    config: keyberon::action::HoldTapConfig::Default,
-    tap_hold_interval: 0
-};
-const CSPACE: Action = m(&[LCtrl, Space]);
-macro_rules! s {
-    ($k:ident) => {
-        m(&[LShift, $k])
-    };
-}
-macro_rules! a {
-    ($k:ident) => {
-        m(&[RAlt, $k])
-    };
-}
-
-#[rustfmt::skip]
-pub static LAYERS: keyberon::layout::Layers = &[
-    &[
-        &[k(Tab),     k(Q), k(W),  k(E),    k(R), k(T),    k(Y),     k(U),    k(I),   k(O),    k(P),     k(LBracket)],
-        &[k(RBracket),k(A), k(S),  k(D),    k(F), k(G),    k(H),     k(J),    k(K),   k(L),    k(SColon),k(Quote)   ],
-        &[k(Equal),   k(Z), k(X),  k(C),    k(V), k(B),    k(N),     k(M),    k(Comma),k(Dot), k(Slash), k(Bslash)  ],
-        &[Trans,      Trans,k(LGui),k(LAlt),L1_SP,k(LCtrl),k(RShift),L2_ENTER,k(RAlt),k(BSpace),Trans,   Trans      ],
-    ], &[
-        &[Trans,         k(Pause),Trans,     k(PScreen),Trans,    Trans,Trans,      Trans,  k(Delete),Trans,  Trans,   Trans ],
-        &[Trans,         Trans,   k(NumLock),k(Insert), k(Escape),Trans,k(CapsLock),k(Left),k(Down),  k(Up),  k(Right),Trans ],
-        &[k(NonUsBslash),k(Undo), CUT,       COPY,      PASTE,    Trans,Trans,      k(Home),k(PgDown),k(PgUp),k(End),  Trans ],
-        &[Trans,         Trans,   Trans,     Trans,     Trans,    Trans,Trans,      Trans,  Trans,    Trans,  Trans,   Trans ],
-    ], &[
-        &[s!(Grave),s!(Kb1),s!(Kb2),s!(Kb3),s!(Kb4),s!(Kb5),s!(Kb6),s!(Kb7),s!(Kb8),s!(Kb9),s!(Kb0),s!(Minus)],
-        &[ k(Grave), k(Kb1), k(Kb2), k(Kb3), k(Kb4), k(Kb5), k(Kb6), k(Kb7), k(Kb8), k(Kb9), k(Kb0), k(Minus)],
-        &[a!(Grave),a!(Kb1),a!(Kb2),a!(Kb3),a!(Kb4),a!(Kb5),a!(Kb6),a!(Kb7),a!(Kb8),a!(Kb9),a!(Kb0),a!(Minus)],
-        &[Trans,    Trans,  Trans,  Trans,  CSPACE, Trans,  Trans,  Trans,  Trans,  Trans,  Trans,  Trans    ],
-    ], &[
-        &[k(F1),k(F2),k(F3),k(F4),k(F5),k(F6),k(F7),k(F8),k(F9),k(F10),k(F11),k(F12)],
-        &[Trans,Trans,Trans,Trans,Trans,Trans,Trans,Trans,Trans,Trans, Trans, Trans ],
-        &[Trans,Trans,Trans,Trans,Trans,Trans,Trans,Trans,Trans,Trans, Trans, Trans ],
-        &[Trans,Trans,Trans,Trans,Trans,Trans,Trans,Trans,Trans,Trans, Trans, Trans ],
-    ],
-];
-
 #[app(device = atsamd_hal::target_device, peripherals = true)]
 const APP: () = {
     struct Resources {
@@ -181,7 +128,6 @@ const APP: () = {
         other_debouncer: Debouncer<PressedKeys<U4, U7>>,
         layout: Layout,
         timer: TimerCounter<TC3>,
-        // uart: UART0<Sercom0Pad3<Pa11<PfC>>, Sercom0Pad2<Pa10<PfC>>, (), ()>,
         rx: atsamd_hal::sercom::Rx0,
         tx: atsamd_hal::sercom::Tx0,
         led: Pa27<Output<OpenDrain>>,
@@ -243,7 +189,7 @@ const APP: () = {
             c.device.TC3,
             &mut c.device.PM,
         );
-        timer.start(4.ms());
+        timer.start(1.ms());
         timer.enable_interrupt();
 
         let rx_pin: Sercom0Pad3<_> = port
@@ -285,20 +231,31 @@ const APP: () = {
         }
     }
 
-    #[task(binds = SERCOM0, priority = 1, spawn = [handle_event], resources = [rx, other_debouncer])]
+    #[task(binds = SERCOM0, priority = 4, spawn = [handle_uart_frame], resources = [rx])]
     fn rx(c: rx::Context) {
-        static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];
+        static mut BUF: [u8; RX_BUF_LEN] = [0; RX_BUF_LEN];
+        static mut BUF_POS: usize = 0;
 
         while let Ok(b) = c.resources.rx.read() {
-            BUF.rotate_left(1);
-            BUF[BUF_LEN - 1] = b;
-            if BUF[0] == SOF {
-                if let Some(scan) = decode_scan(&BUF) {
-                    for event in c.resources.other_debouncer.events(scan) {
-                        let event = event.transform(|i, j| (i, 11 - j));
-                        c.spawn.handle_event(Some(event)).unwrap();
-                    }
+            if b == SOF {
+                *BUF_POS = 0;
+            } else {
+                BUF[*BUF_POS] = b;
+                *BUF_POS += 1;
+                if *BUF_POS == RX_BUF_LEN {
+                    *BUF_POS = 0;
+                    c.spawn.handle_uart_frame(*BUF).unwrap();
                 }
+            }
+        }
+    }
+
+    #[task(priority = 2, capacity = 4, spawn = [handle_event], resources = [other_debouncer])]
+    fn handle_uart_frame(mut c: handle_uart_frame::Context, buf: [u8; RX_BUF_LEN]) {
+        if let Some(scan) = decode_scan(&buf) {
+            for event in c.resources.other_debouncer.events(scan) {
+                let event = event.transform(|i, j| (i, j + 7));
+                c.spawn.handle_event(Some(event)).unwrap();
             }
         }
     }
@@ -315,18 +272,12 @@ const APP: () = {
         led
         ])]
     fn handle_event(mut c: handle_event::Context, event: Option<Event>) {
+        if let Some(event) = event {
+            c.resources.layout.event(event);
+            c.resources.led.toggle();
+        };
         c.resources.layout.tick();
         let report: KbHidReport = c.resources.layout.keycodes().collect();
-         match event {
-            None => {},
-            //     c.resources.layout.tick();
-            //     c.resources.layout.keycodes()
-            // },
-            Some(e) => {
-                c.resources.led.toggle();
-                // c.resources.layout.event(e).collect()
-            },
-        };
         if !c
             .resources
             .usb_class
@@ -342,14 +293,12 @@ const APP: () = {
 
     #[task(
         binds = TC3,
-        priority = 2,
+        priority = 1,
         spawn = [handle_event],
         resources = [matrix, debouncer, timer, tx],
     )]
     fn tick(c: tick::Context) {
-        // c.resources.timer.clear_interrupt(timer::Event::TimeOut);
         c.resources.timer.wait().ok();
-        // c.resources.led.toggle();
 
         let scan = c.resources.matrix.get().unwrap();
         let buf = encode_scan(&scan);
@@ -362,12 +311,15 @@ const APP: () = {
         }
 
         for event in c.resources.debouncer.events(scan) {
+            let event = event.transform(|i, j| (i, 6 - j));
             c.spawn.handle_event(Some(event)).unwrap();
         }
         c.spawn.handle_event(None).unwrap();
     }
 
+    // Unused interrupts that will be used by RTIC for software tasks
     extern "C" {
         fn ADC();
+        fn DAC();
     }
 };
