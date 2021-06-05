@@ -206,7 +206,7 @@ const APP: () = {
             .expect("Could not configure sercom0 core clock");
         let uart = UART0::new(
             &uart_clk,
-            57600.hz(), //115200.hz(),
+            115200.hz(),
             c.device.SERCOM0,
             &mut c.device.PM,
             (rx_pin, tx_pin),
@@ -244,13 +244,13 @@ const APP: () = {
                 *BUF_POS += 1;
                 if *BUF_POS == RX_BUF_LEN {
                     *BUF_POS = 0;
-                    c.spawn.handle_uart_frame(*BUF).unwrap();
+                    let _ = c.spawn.handle_uart_frame(*BUF); // TODO: report errors somehow
                 }
             }
         }
     }
 
-    #[task(priority = 2, capacity = 4, spawn = [handle_event], resources = [other_debouncer])]
+    #[task(priority = 2, capacity = 1, spawn = [handle_event], resources = [other_debouncer])]
     fn handle_uart_frame(mut c: handle_uart_frame::Context, buf: [u8; RX_BUF_LEN]) {
         if let Some(scan) = decode_scan(&buf) {
             for event in c.resources.other_debouncer.events(scan) {

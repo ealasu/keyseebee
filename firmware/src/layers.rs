@@ -4,16 +4,16 @@ use keyberon::key_code::KeyCode::*;
 
 pub static LAYERS: keyberon::layout::Layers = layout! {
     {
-        [ Tab    Q W E R T n   n Y U I O P BSpace ]
-        [ LCtrl  A S D F G n   n H J K L ; Quote  ]
-        [ LShift Z X C V B n   n N M , . / Escape ]
-        [ n n LGui (1) Space n n   Escape   BSpace Enter (1) RAlt n n ]
+        [ Tab    Q W E R T n                    n Y U I O P BSpace  ]
+        [ n      A S D F G Tab                  n H J K L ; Quote   ]
+        [ n      Z X C V B Escape           Enter N M , . / Escape  ]
+        [ n n n LGui LShift BSpace LCtrl     RAlt Space (1) - n n n ]
     }
     {
-        [ Tab    1 2 3 4 5 n  n 6 7 8 9 0 BSpace ]
-        [ LCtrl  ! @ # $ % n  n ^ & * '(' ')' [LCtrl '`'] ]
-        [ LShift n n n n n n  n Left Down Up Right n ~ ]
-        [   n n LGui t t t n  n t t t RAlt n n ]
+        [ t      ! @ '{' '}' |   n    n PgUp   7 8 9 *    0 ]
+        [ t      # $ '(' ')' '`' n    n PgDown 4 5 6 +    n ]
+        [ t      % ^ '[' ']' ~   n    n &      1 2 3 '\\' n ]
+        [ n      n n t   t   t   t    t t      t t n n    n ]
     }
 };
 
