@@ -231,7 +231,14 @@ const APP: () = {
         }
     }
 
-    #[task(binds = SERCOM0, priority = 4, spawn = [handle_uart_frame], resources = [rx])]
+    #[task(binds = USB, priority = 4, resources = [usb_dev, usb_class])]
+    fn usb_rx(c: usb_rx::Context) {
+        if c.resources.usb_dev.poll(&mut [c.resources.usb_class]) {
+            c.resources.usb_class.poll();
+        }
+    }
+
+    #[task(binds = SERCOM0, priority = 3, spawn = [handle_uart_frame], resources = [rx])]
     fn rx(c: rx::Context) {
         static mut BUF: [u8; RX_BUF_LEN] = [0; RX_BUF_LEN];
         static mut BUF_POS: usize = 0;
@@ -260,14 +267,7 @@ const APP: () = {
         }
     }
  
-    #[task(binds = USB, priority = 4, resources = [usb_dev, usb_class])]
-    fn usb_rx(c: usb_rx::Context) {
-        if c.resources.usb_dev.poll(&mut [c.resources.usb_class]) {
-            c.resources.usb_class.poll();
-        }
-    }
-
-    #[task(priority = 3, capacity = 8, resources = [
+    #[task(priority = 2, capacity = 8, resources = [
         usb_dev, usb_class, layout,
         led
         ])]
