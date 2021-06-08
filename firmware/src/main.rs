@@ -30,7 +30,7 @@ use keyberon::{
     debounce::Debouncer,
     impl_heterogenous_array,
     key_code::KbHidReport,
-    key_code::KeyCode::*,
+    key_code::KeyCode,
     layout::{Event, Layout},
     matrix::{Matrix, PressedKeys},
 };
@@ -150,7 +150,7 @@ const APP: () = {
             .expect("Could not get clock 2");
 
         let mut port = c.device.PORT.split();
-        let matrix = Matrix::new(
+        let mut matrix = Matrix::new(
             Cols(
                 port.pa14.into_pull_up_input(&mut port.port),
                 port.pa9.into_pull_up_input(&mut port.port),
@@ -168,6 +168,20 @@ const APP: () = {
             ),
         )
         .unwrap();
+
+        // Enter bootloader if Escape key is pressed when keyboard is plugged in
+        let mut init_layout = Layout::new(LAYERS);
+        let scan = matrix.get().unwrap();
+        for (i, j) in scan.iter_pressed() {
+            init_layout.event(Event::Press(i as u8, (6 - j) as u8));
+        }
+        init_layout.tick();
+        if init_layout.keycodes().any(|k| k == KeyCode::Escape ) {
+            // Set special value in last word of RAM for UF2 bootloader to see
+            unsafe { *((0x20000000 + (16 * 1024) - 4) as *mut u32) = 0xf01669ef; }
+            // Then reset the CPU to enter the bootloader
+            cortex_m::peripheral::SCB::sys_reset();
+        }
 
         let usb_clock = &clocks.usb(&gclk0).unwrap();
         let usb_bus = {
@@ -216,6 +230,7 @@ const APP: () = {
 
         let mut led = port.pa27.into_open_drain_output(&mut port.port);
         led.set_high().unwrap();
+
 
         init::LateResources {
             usb_dev,

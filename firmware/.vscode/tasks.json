@@ -3,11 +3,7 @@
     "tasks": [
         {
             "label": "build",
-            "args": [
-                "--run",
-                "cargo build"
-            ],
-            "command": "nix-shell",
+            "command": "./build.sh",
             "group": "build",
             "problemMatcher": [
                 {
@@ -27,6 +23,14 @@
                         "message": 7
                     }
                 }
+            ]
+        },
+        {
+            "label": "flash",
+            "command": "./flash.sh",
+            "group": "build",
+            "problemMatcher": [
+                "$rustc"
             ]
         }
     ]

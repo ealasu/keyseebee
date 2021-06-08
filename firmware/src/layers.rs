@@ -4,15 +4,15 @@ use keyberon::key_code::KeyCode::*;
 
 pub static LAYERS: keyberon::layout::Layers = layout! {
     {
-        [ Tab    Q W E R T n                    n Y U I O P BSpace  ]
+        [ Tab    Q W E R T n                    n Y U I O P 0 ]
         [ n      A S D F G Tab                  n H J K L ; Quote   ]
         [ n      Z X C V B Escape           Enter N M , . / Escape  ]
         [ n n n LGui LShift BSpace LCtrl     RAlt Space (1) - n n n ]
     }
     {
-        [ t      ! @ '{' '}' |   n    n PgUp   7 8 9 *    0 ]
-        [ t      # $ '(' ')' '`' n    n PgDown 4 5 6 +    n ]
-        [ t      % ^ '[' ']' ~   n    n &      1 2 3 '\\' n ]
+        [ t      ! @ '{' '}' |   n    n PgUp   7 8 9 *    t ]
+        [ t      # $ '(' ')' '`' n    n PgDown 4 5 6 +    = ]
+        [ t      % ^ '[' ']' ~   n    n &      1 2 3 '\\' = ]
         [ n      n n t   t   t   t    t t      t t n n    n ]
     }
 };
