@@ -8,3 +8,4 @@ generic-array = "0.14"
 arrayvec = {version="*", default-features=false}
 cortex-m = "0.6"
 keyberon = {path = "../../../oss/keyberon"}
+keyberon-macros = {path = "../../../oss/keyberon/keyberon-macros"}

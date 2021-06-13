@@ -1,4 +1,4 @@
 {
-  "cortex-debug.JLinkGDBServerPath": "/nix/store/l6s053rry897hxcnj5yz6hqqn2ysrkcw-jlink-V722/bin/JLinkGDBServer",
-  "rust-analyzer.server.path": "/nix/store/gbi5xnmdzs7xjs8vmgbw2ma3bcrm5jak-rust-1.52.1-2021-05-09-9bc8c42bb/bin/rust-analyzer"
+  "cortex-debug.JLinkGDBServerPath": "/nix/store/l3akl1j7ahqyrf3hybv2yji8lz19bxkb-jlink-V722/bin/JLinkGDBServer",
+  "rust-analyzer.server.path": "/nix/store/0ygl86n5i5kjij6fyf2vqpbvacyifgcy-rust-1.52.1-2021-05-09-9bc8c42bb/bin/rust-analyzer"
 }

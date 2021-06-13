@@ -10,7 +10,6 @@ cortex-m = "0.6"
 cortex-m-rt = { version = "*", features = ["device"] }
 panic-halt = "*"
 keyberon = {path = "../../oss/keyberon"}
-keyberon-macros = {path = "../../oss/keyberon/keyberon-macros"}
 cortex-m-rtic = "*"
 generic-array = "*"
 embedded-hal = "*"

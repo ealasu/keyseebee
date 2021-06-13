@@ -20,13 +20,15 @@ pkgs.mkShell {
       ];
     })
     pkgconfig
+    rustup
     cargo-edit
     cargo-generate
     openssl
     openocd
     libusb
     gcc-arm-embedded
-    #(import ./jlink.nix)
+    gcc
+    ##(import ./jlink.nix)
 
 
     (callPackage ({ stdenv, requireFile, autoPatchelfHook, substituteAll,

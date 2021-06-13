@@ -41,8 +41,10 @@ use usb_device::{
     class::UsbClass,
     device::{UsbDevice, UsbDeviceState},
 };
-use stuff::codec::{encode_scan, decode_scan, SOF, RX_BUF_LEN};
-use keyseebee::layers::LAYERS;
+use stuff::{
+    codec::{encode_scan, decode_scan, SOF, RX_BUF_LEN},
+    layers::LAYERS,
+};
 
 trait ResultExt<T> {
     fn get(self) -> T;
@@ -338,3 +340,21 @@ const APP: () = {
         fn DAC();
     }
 };
+
+// #[inline(never)]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     use core::sync::atomic::{self, Ordering};
+//     let mut port = c.device.PORT.split();
+//     let mut led = port.pa27.into_open_drain_output(&mut port.port);
+//     loop {
+//         led.set_high().unwrap();
+//         for _ in 0..20_000_000 {
+//             atomic::compiler_fence(Ordering::SeqCst);
+//         }
+//         led.set_low().unwrap();
+//         for _ in 0..20_000_000 {
+//             atomic::compiler_fence(Ordering::SeqCst);
+//         }
+//     }
+// }

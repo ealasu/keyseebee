@@ -13,7 +13,19 @@ pub static LAYERS: keyberon::layout::Layers = layout! {
         [ t      ! @ '{' '}' |   n    n PgUp   7 8 9 *    t ]
         [ t      # $ '(' ')' '`' n    n PgDown 4 5 6 +    = ]
         [ t      % ^ '[' ']' ~   n    n &      1 2 3 '\\' = ]
-        [ n      n n t   t   t   t    t t      t t n n    n ]
+        [ n      n n t   (2)  (1) t    t (1)    t n n n    n ]
+    }
+    {
+        [ n n n n n n n            n n PgUp n n n n ]
+        [ n n n PgDown n n n       n Left Down Up Right n n ]
+        [ n n n n n n n            n n n n n n n ]
+        [ n n n t t t t            t t t t n n n ]
+    }
+    {
+        [ n n n n n n n            n n F7 F8 F9 F10 n ]
+        [ n n n n n n n            n n F4 F5 F6 F11 n ]
+        [ n n n n n n n            n n F1 F2 F3 F12 n ]
+        [ n n n t t t t            t t t t n n n ]
     }
 };
 
@@ -71,3 +83,70 @@ pub static LAYERS: keyberon::layout::Layers = layout! {
 //         m(&[RAlt, $k])
 //     };
 // }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use keyberon::{
+        key_code::KeyCode,
+        layout::{Event, Layout}
+    };
+
+    #[test]
+    fn test() {
+        let mut layout = Layout::new(LAYERS);
+
+        println!("press/release O");
+        layout.event(Event::Press(0, 9)); // the O key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+        layout.event(Event::Release(0, 9)); // the O key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+
+        println!("press (1)");
+        layout.event(Event::Press(3, 9)); // the (1) key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+
+        println!("press/release 7");
+        layout.event(Event::Press(0, 9)); // the 7 key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+        layout.event(Event::Release(0, 9)); // the O key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+
+
+        println!("press (2)");
+        layout.event(Event::Press(3, 5)); // the (2) key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+
+        println!("press/release L");
+        layout.event(Event::Press(1, 9)); // the L key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+        layout.event(Event::Release(1, 9)); // the L key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+
+        // println!("release (2)");
+        // layout.event(Event::Release(3, 5)); // the (2) key
+        // layout.tick();
+        // println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+
+        println!("release (1)");
+        layout.event(Event::Release(3, 9)); // the (1) key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+
+        println!("press/release L");
+        layout.event(Event::Press(1, 9)); // the L key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+        layout.event(Event::Release(1, 9)); // the L key
+        layout.tick();
+        println!("{:?}", layout.keycodes().collect::<Vec<_>>());
+    }
+}
